@@ -3,6 +3,8 @@ require "omniauth-oauth2"
 module OmniAuth
   module Strategies
     class Wechat < OmniAuth::Strategies::OAuth2
+      DEFAULT_SCOPE = 'snsapi_userinfo'
+
       option :name, "wechat"
 
       option :client_options, {
@@ -12,7 +14,7 @@ module OmniAuth
         token_method:  :get
       }
 
-      option :authorize_params, {scope: "snsapi_userinfo"}
+      option :authorize_params, {scope: DEFAULT_SCOPE}
 
       option :token_params, {parse: :json}
 
@@ -56,13 +58,25 @@ module OmniAuth
         end
       end
 
+      def authorize_params
+        super.tap do |params|
+          %w[scope state].each do |v|
+            if request.params[v]
+              params[v.to_sym] = request.params[v]
+            end
+          end
+
+          params[:scope] ||= DEFAULT_SCOPE
+        end
+      end
+
       protected
       def build_access_token
         params = {
-          'appid' => client.id, 
+          'appid' => client.id,
           'secret' => client.secret,
           'code' => request.params['code'],
-          'grant_type' => 'authorization_code' 
+          'grant_type' => 'authorization_code'
           }.merge(token_params.to_hash(symbolize_keys: true))
         client.get_token(params, deep_symbolize(options.auth_token_params))
       end
